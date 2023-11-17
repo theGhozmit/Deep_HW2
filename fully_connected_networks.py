@@ -485,7 +485,7 @@ class FullyConnectedNet(object):
         layer_cache = {}
         drop_outs   = {}
         drop_out_cache = {}
-        for i in range(self.num_layers - 2):
+        for i in range(self.num_layers - 1):
             if self.use_dropout:
                 if i == 0:
                     layer_out[1], layer_cache[1] = Linear_ReLU.forward(x_reshaped, self.params['W1'], self.params['b1'])
@@ -500,11 +500,11 @@ class FullyConnectedNet(object):
                     layer_out[i + 1], layer_cache[i + 1] = Linear_ReLU.forward(layer_out[i], self.params['W' + str(i + 1)], self.params['b' + str(i + 1)])
 
         if self.use_dropout:
-            layer_out[self.num_layers-1], layer_cache[self.num_layers-1] = Linear.forward(drop_outs[self.num_layers - 2], self.params['W' + str(self.num_layers-1)], self.params['b' + str(self.num_layers-1)])
+            layer_out[self.num_layers], layer_cache[self.num_layers] = Linear.forward(drop_outs[self.num_layers - 1], self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
         else :
-            layer_out[self.num_layers-1], layer_cache[self.num_layers-1] = Linear.forward(layer_out[self.num_layers - 2], self.params['W' + str(self.num_layers-1)], self.params['b' + str(self.num_layers-1)])
+            layer_out[self.num_layers], layer_cache[self.num_layers] = Linear.forward(layer_out[self.num_layers - 1], self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
           
-        scores = layer_out[self.num_layers-1]
+        scores = layer_out[self.num_layers]
         #################################################################
         #                      END OF YOUR CODE                         #
         #################################################################
@@ -530,8 +530,8 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers):
             loss += self.reg * torch.sum(self.params['W' + str(i + 1)] ** 2)
             
-        for i in range(self.num_layers-1, 0, -1):
-            if i == self.num_layers-1:
+        for i in range(self.num_layers, 0, -1):
+            if i == self.num_layers:
                 dout, grads['W' + str(i)], grads['b' + str(i)] = Linear.backward(dscores, layer_cache[i])
                 grads['W' + str(i)] += 2 * self.reg * self.params['W' + str(i)]
             else :
@@ -573,8 +573,8 @@ def get_three_layer_network_params():
     # TODO: Change weight_scale and learning_rate so your         #
     # model achieves 100% training accuracy within 20 epochs.     #
     ###############################################################
-    weight_scale = 1e-2   # Experiment with this!
-    learning_rate = 1e-4  # Experiment with this!
+    weight_scale = 0.1   # Experiment with this!
+    learning_rate = 0.2  # Experiment with this!
     ################################################################
     #                             END OF YOUR CODE                 #
     ################################################################
@@ -586,8 +586,8 @@ def get_five_layer_network_params():
     # TODO: Change weight_scale and learning_rate so your          #
     # model achieves 100% training accuracy within 20 epochs.      #
     ################################################################
-    learning_rate = 2e-3  # Experiment with this!
-    weight_scale = 1e-5   # Experiment with this!
+    learning_rate = 0.2  # Experiment with this!
+    weight_scale = 0.1   # Experiment with this!
     ################################################################
     #                       END OF YOUR CODE                       #
     ################################################################
@@ -708,10 +708,13 @@ def adam(w, dw, config=None):
     # using it in any calculations.                                          #
     ##########################################################################
     # Replace "pass" statement with your code
+    config['t'] += 1
     config['m'] = config['beta1'] * config['m'] + (1 - config['beta1']) * dw 
     config['v'] = config['beta2'] * config['v'] + (1 - config['beta2']) * (dw ** 2)
-    next_w = w - config['learning_rate'] / (torch.sqrt(config['v']/(1 - config['beta2']**config['t'])) + config['epsilon']) * config['m']/(1 - config['beta1']**config['t'])
-    config['t'] = config['t'] + 1
+    mt = config['m'] / (1 - config['beta1']**config['t'])
+    vt = config['v'] / (1 - config['beta2']**config['t'])
+
+    next_w = w - (config['learning_rate'] / (torch.sqrt(vt) + config['epsilon'])) * mt
     #########################################################################
     #                              END OF YOUR CODE                         #
     #########################################################################
@@ -765,6 +768,7 @@ class Dropout(object):
             ##############################################################
             # Replace "pass" statement with your code
             mask = torch.rand(x.shape) > p
+            mask = mask.to(x.device)
             out = torch.mul(x, mask)
             ##############################################################
             #                   END OF YOUR CODE                         #
